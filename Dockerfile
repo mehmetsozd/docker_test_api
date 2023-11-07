@@ -1,22 +1,15 @@
-#See https://aka.ms/containerfastmode to understand how Visual Studio uses this Dockerfile to build your images for faster debugging.
-
-FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
+FROM mcr.microsoft.com/dotnet/core/sdk:3.1 AS build-env
 WORKDIR /app
-EXPOSE 80
-EXPOSE 443
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
-WORKDIR /src
-COPY ["docker_test_api.csproj", "."]
-RUN dotnet restore "./docker_test_api.csproj"
-COPY . .
-WORKDIR "/src/."
-RUN dotnet build "docker_test_api.csproj" -c Release -o /app/build
+COPY *.csproj .
 
-FROM build AS publish
-RUN dotnet publish "docker_test_api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet restore
 
-FROM base AS final
+COPY . ./
+
+RUN dotnet publish --no-restore -c Release -o out
+
+FROM mcr.microsoft.com/dotnet/core/aspnet:3.1
 WORKDIR /app
-COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "docker_test_api.dll"]
+COPY --from=build-env /app/out .
+ENTRYPOINT ["dotnet","Api.dll"]
